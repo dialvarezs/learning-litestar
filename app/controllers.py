@@ -1,6 +1,8 @@
 from typing import Sequence
+from advanced_alchemy.exceptions import NotFoundError
 from litestar import Controller, delete, get, patch, post
 from litestar.dto import DTOData
+from litestar.exceptions import NotFoundException
 
 from app.dtos import TodoItemCreateDTO, TodoItemDTO, TodoItemUpdateDTO
 from app.models import TodoItem
@@ -24,7 +26,10 @@ class ItemController(Controller):
     async def get_item(
         self, todoitem_repo: TodoItemRepository, item_id: int
     ) -> TodoItem:
-        return todoitem_repo.get(item_id)
+        try:
+            return todoitem_repo.get(item_id)
+        except NotFoundError:
+            raise NotFoundException(detail=f"Item con id={item_id} no encontrado")
 
     @post("/", dto=TodoItemCreateDTO)
     async def create_item(
@@ -36,12 +41,17 @@ class ItemController(Controller):
     async def patch_item(
         self, todoitem_repo: TodoItemRepository, item_id: int, data: DTOData[TodoItem]
     ) -> TodoItem:
-        item, _ = todoitem_repo.get_and_update(
-            id=item_id, **data.as_builtins(), match_fields=["id"]
-        )
-        return item
-
+        try:
+            item, _ = todoitem_repo.get_and_update(
+                id=item_id, **data.as_builtins(), match_fields=["id"]
+            )
+            return item
+        except NotFoundError:
+            raise NotFoundException(detail=f"Item con id={item_id} no encontrado")
 
     @delete("/{item_id:int}")
     async def delete_item(self, todoitem_repo: TodoItemRepository, item_id: int) -> None:
-        todoitem_repo.delete(item_id)
+        try:
+            todoitem_repo.delete(item_id)
+        except NotFoundError:
+            raise NotFoundException(detail=f"Item con id={item_id} no encontrado")
