@@ -10,5 +10,6 @@ class TodoItemDTO(SQLAlchemyDTO[TodoItem]):
 class TodoItemCreateDTO(SQLAlchemyDTO[TodoItem]):
     config = SQLAlchemyDTOConfig(exclude={"id", "done"})
 
+
 class TodoItemUpdateDTO(SQLAlchemyDTO[TodoItem]):
     config = SQLAlchemyDTOConfig(exclude={"id"}, partial=True)
