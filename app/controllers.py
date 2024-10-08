@@ -41,7 +41,6 @@ class ItemController(Controller):
         )
         return item
 
-
     @delete("/{item_id:int}")
     async def delete_item(self, todoitem_repo: TodoItemRepository, item_id: int) -> None:
         todoitem_repo.delete(item_id)
