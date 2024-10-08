@@ -1,26 +1,7 @@
-from dataclasses import dataclass
-from typing import Optional
 
-from litestar import Controller, Litestar, delete, get, patch, post, put
+from litestar import Controller, delete, get, patch, post, put
 
-
-@dataclass
-class TodoItem:
-    title: str
-    done: bool
-
-
-@dataclass
-class TodoItemUpdate:
-    title: Optional[str] = None
-    done: Optional[bool] = None
-
-
-TODO_LIST: list[TodoItem] = [
-    TodoItem(title="Aprender Python", done=True),
-    TodoItem(title="Aprender SQLAlchemy", done=True),
-    TodoItem(title="Aprender Litestar", done=False),
-]
+from app.database import TODO_LIST, TodoItem, TodoItemUpdate
 
 
 class ItemController(Controller):
@@ -55,6 +36,3 @@ class ItemController(Controller):
     @delete("/{item_id:int}")
     async def delete_item(self, item_id: int) -> None:
         del TODO_LIST[item_id - 1]
-
-
-app = Litestar([ItemController], debug=True)
