@@ -1,6 +1,6 @@
 from advanced_alchemy.extensions.litestar import SQLAlchemyDTO, SQLAlchemyDTOConfig
 
-from app.models import TodoItem
+from app.models import TodoItem, User
 
 
 class TodoItemDTO(SQLAlchemyDTO[TodoItem]):
@@ -8,8 +8,24 @@ class TodoItemDTO(SQLAlchemyDTO[TodoItem]):
 
 
 class TodoItemCreateDTO(SQLAlchemyDTO[TodoItem]):
-    config = SQLAlchemyDTOConfig(exclude={"id", "done"})
+    config = SQLAlchemyDTOConfig(exclude={"id", "done", "assigned_to"})
 
 
 class TodoItemUpdateDTO(SQLAlchemyDTO[TodoItem]):
-    config = SQLAlchemyDTOConfig(exclude={"id"}, partial=True)
+    config = SQLAlchemyDTOConfig(exclude={"id", "assigned_to"}, partial=True)
+
+
+class UserDTO(SQLAlchemyDTO[User]):
+    config = SQLAlchemyDTOConfig(exclude={"items"})
+
+
+class UserFullDTO(SQLAlchemyDTO[User]):
+    pass
+
+
+class UserCreateDTO(SQLAlchemyDTO[User]):
+    config = SQLAlchemyDTOConfig(exclude={"id", "items"})
+
+
+class UserUpdateDTO(SQLAlchemyDTO[User]):
+    config = SQLAlchemyDTOConfig(exclude={"id", "items"}, partial=True)
