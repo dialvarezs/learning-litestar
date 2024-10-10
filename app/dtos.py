@@ -1,6 +1,6 @@
 from advanced_alchemy.extensions.litestar import SQLAlchemyDTO, SQLAlchemyDTOConfig
 
-from app.models import TodoItem, User
+from app.models import Category, TodoItem, User
 
 
 class TodoItemDTO(SQLAlchemyDTO[TodoItem]):
@@ -8,11 +8,13 @@ class TodoItemDTO(SQLAlchemyDTO[TodoItem]):
 
 
 class TodoItemCreateDTO(SQLAlchemyDTO[TodoItem]):
-    config = SQLAlchemyDTOConfig(exclude={"id", "done", "assigned_to"})
+    config = SQLAlchemyDTOConfig(
+        exclude={"id", "done", "assigned_to", "categories.0.name"}
+    )
 
 
 class TodoItemUpdateDTO(SQLAlchemyDTO[TodoItem]):
-    config = SQLAlchemyDTOConfig(exclude={"id", "assigned_to"}, partial=True)
+    config = SQLAlchemyDTOConfig(exclude={"id", "assigned_to", "categories.0.name"}, partial=True)
 
 
 class UserDTO(SQLAlchemyDTO[User]):
@@ -28,4 +30,20 @@ class UserCreateDTO(SQLAlchemyDTO[User]):
 
 
 class UserUpdateDTO(SQLAlchemyDTO[User]):
+    config = SQLAlchemyDTOConfig(exclude={"id", "items"}, partial=True)
+
+
+class CategoryDTO(SQLAlchemyDTO[Category]):
+    config = SQLAlchemyDTOConfig(exclude={"items"})
+
+
+class CategoryFullDTO(SQLAlchemyDTO[Category]):
+    pass
+
+
+class CategoryCreateDTO(SQLAlchemyDTO[Category]):
+    config = SQLAlchemyDTOConfig(exclude={"id", "items"})
+
+
+class CategoryUpdateDTO(SQLAlchemyDTO[Category]):
     config = SQLAlchemyDTOConfig(exclude={"id", "items"}, partial=True)

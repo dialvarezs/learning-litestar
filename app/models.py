@@ -28,6 +28,32 @@ class TodoItem(Base):
     assigned_to_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
 
     assigned_to: Mapped["User"] = relationship(back_populates="items")
+    categories: Mapped[list["Category"]] = relationship(
+        back_populates="items", secondary="items_categories"
+    )
 
     def __repr__(self) -> str:
         return f"<TodoItem(id={self.id},title={self.title},done={self.done})>"
+
+
+class Category(Base):
+    __tablename__ = "categories"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(32))
+
+    items: Mapped[list["TodoItem"]] = relationship(
+        back_populates="categories", secondary="items_categories"
+    )
+
+    def __repr__(self) -> str:
+        return f"<Category(id={self.id},name={self.name})>"
+
+
+class ItemCategory(Base):
+    __tablename__ = "items_categories"
+
+    item_id: Mapped[int] = mapped_column(ForeignKey("todoitems.id"), primary_key=True)
+    category_id: Mapped[int] = mapped_column(
+        ForeignKey("categories.id"), primary_key=True
+    )
