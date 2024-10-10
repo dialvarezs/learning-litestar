@@ -14,7 +14,9 @@ class TodoItemCreateDTO(SQLAlchemyDTO[TodoItem]):
 
 
 class TodoItemUpdateDTO(SQLAlchemyDTO[TodoItem]):
-    config = SQLAlchemyDTOConfig(exclude={"id", "assigned_to", "categories.0.name"}, partial=True)
+    config = SQLAlchemyDTOConfig(
+        exclude={"id", "assigned_to", "categories.0.name"}, partial=True
+    )
 
 
 class UserDTO(SQLAlchemyDTO[User]):
