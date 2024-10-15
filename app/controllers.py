@@ -1,10 +1,14 @@
-from typing import Sequence
+from typing import Annotated, Sequence
 from advanced_alchemy.exceptions import NotFoundError
 from advanced_alchemy.filters import CollectionFilter
-from litestar import Controller, delete, get, patch, post
+from litestar import Controller, Response, delete, get, patch, post
+from litestar.contrib.jwt import OAuth2Login
 from litestar.di import Provide
 from litestar.dto import DTOData
-from litestar.exceptions import NotFoundException
+from litestar.enums import RequestEncodingType
+from litestar.exceptions import HTTPException, NotFoundException
+from litestar.params import Body
+from litestar.status_codes import HTTP_200_OK
 
 from app.dtos import (
     CategoryCreateDTO,
@@ -17,6 +21,7 @@ from app.dtos import (
     UserCreateDTO,
     UserDTO,
     UserFullDTO,
+    UserLoginDTO,
     UserUpdateDTO,
 )
 from app.models import Category, TodoItem, User
@@ -28,6 +33,7 @@ from app.repositories import (
     provide_todoitem_repo,
     provide_user_repo,
 )
+from app.security import password_hasher, oauth2_auth
 
 
 class ItemController(Controller):
@@ -139,7 +145,7 @@ class UserController(Controller):
 
     @post("/", dto=UserCreateDTO)
     async def create_user(self, user_repo: UserRepository, data: User) -> User:
-        return user_repo.add(data)
+        return user_repo.add_hashed(data)
 
     @patch("/{user_id:int}", dto=UserUpdateDTO)
     async def patch_user(
@@ -217,3 +223,36 @@ class CategoryController(Controller):
             raise NotFoundException(
                 detail=f"Categoría con id={category_id} no encontrada"
             )
+
+
+class AuthController(Controller):
+    path = "/auth"
+    tags = ["auth"]
+
+    @post(
+        "/login",
+        dto=UserLoginDTO,
+        dependencies={"user_repo": Provide(provide_user_repo)},
+    )
+    async def login(
+        self,
+        data: Annotated[User, Body(media_type=RequestEncodingType.URL_ENCODED)],
+        user_repo: UserRepository,
+    ) -> "Response[OAuth2Login]":
+        user = user_repo.get_one_or_none(username=data.username)
+
+        if user is not None and password_hasher.verify(data.password, user.password):
+            return oauth2_auth.login(
+                identifier=str(user.username), token_extras={"name": user.fullname}
+            )
+        else:
+            raise HTTPException(
+                status_code=401, detail="Usuario o contraseña incorrecta"
+            )
+
+    @post("/logout")
+    async def logout(self) -> Response[None]:
+        response = Response(content=None, status_code=HTTP_200_OK)
+        response.delete_cookie("token")
+
+        return response

@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Category, TodoItem, User
+from app import security
 
 
 class TodoItemRepository(SQLAlchemySyncRepository[TodoItem]):  # type: ignore
@@ -19,6 +20,11 @@ async def provide_todoitem_repo(db_session: Session) -> TodoItemRepository:
 
 class UserRepository(SQLAlchemySyncRepository[User]):  # type: ignore
     model_type = User
+
+    def add_hashed(self, data: User) -> User:
+        data.password = security.password_hasher.hash(data.password)
+        return self.add(data)
+
 
 
 async def provide_user_repo(db_session: Session) -> UserRepository:

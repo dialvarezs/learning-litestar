@@ -12,6 +12,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(32))
     fullname: Mapped[str]
+    password: Mapped[str]
 
     items: Mapped[list["TodoItem"]] = relationship(back_populates="assigned_to")
 

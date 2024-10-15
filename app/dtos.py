@@ -20,11 +20,11 @@ class TodoItemUpdateDTO(SQLAlchemyDTO[TodoItem]):
 
 
 class UserDTO(SQLAlchemyDTO[User]):
-    config = SQLAlchemyDTOConfig(exclude={"items"})
+    config = SQLAlchemyDTOConfig(exclude={"items", "password"})
 
 
 class UserFullDTO(SQLAlchemyDTO[User]):
-    pass
+    config = SQLAlchemyDTOConfig(exclude={"password"})
 
 
 class UserCreateDTO(SQLAlchemyDTO[User]):
@@ -33,6 +33,10 @@ class UserCreateDTO(SQLAlchemyDTO[User]):
 
 class UserUpdateDTO(SQLAlchemyDTO[User]):
     config = SQLAlchemyDTOConfig(exclude={"id", "items"}, partial=True)
+
+
+class UserLoginDTO(SQLAlchemyDTO[User]):
+    config = SQLAlchemyDTOConfig(include={"username", "password"})
 
 
 class CategoryDTO(SQLAlchemyDTO[Category]):
