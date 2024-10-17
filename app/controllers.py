@@ -1,4 +1,5 @@
 from typing import Annotated, Sequence
+
 from advanced_alchemy.exceptions import NotFoundError
 from advanced_alchemy.filters import CollectionFilter
 from litestar import Controller, Response, delete, get, patch, post
@@ -15,6 +16,9 @@ from app.dtos import (
     CategoryDTO,
     CategoryFullDTO,
     CategoryUpdateDTO,
+    CommentCreateDTO,
+    CommentDTO,
+    CommentUpdateDTO,
     TodoItemCreateDTO,
     TodoItemDTO,
     TodoItemUpdateDTO,
@@ -24,16 +28,18 @@ from app.dtos import (
     UserLoginDTO,
     UserUpdateDTO,
 )
-from app.models import Category, TodoItem, User
+from app.models import Category, Comment, TodoItem, User
 from app.repositories import (
     CategoryRepository,
+    CommentRepository,
     TodoItemRepository,
     UserRepository,
     provide_category_repo,
+    provide_comment_repo,
     provide_todoitem_repo,
     provide_user_repo,
 )
-from app.security import password_hasher, oauth2_auth
+from app.security import oauth2_auth, password_hasher
 
 
 class ItemController(Controller):
@@ -44,7 +50,9 @@ class ItemController(Controller):
 
     @get("/")
     async def list_items(
-        self, todoitem_repo: TodoItemRepository, done: bool | None = None
+        self,
+        todoitem_repo: TodoItemRepository,
+        done: bool | None = None,
     ) -> Sequence[TodoItem]:
         if done is None:
             return todoitem_repo.list()
@@ -52,12 +60,16 @@ class ItemController(Controller):
 
     @get("/{item_id:int}")
     async def get_item(
-        self, todoitem_repo: TodoItemRepository, item_id: int
+        self,
+        todoitem_repo: TodoItemRepository,
+        item_id: int,
     ) -> TodoItem:
         try:
             return todoitem_repo.get(item_id)
-        except NotFoundError:
-            raise NotFoundException(detail=f"Item con id={item_id} no encontrado")
+        except NotFoundError as exc:
+            raise NotFoundException(
+                detail=f"Item con id={item_id} no encontrado",
+            ) from exc
 
     @post(
         "/",
@@ -79,14 +91,14 @@ class ItemController(Controller):
             user_repo.get(data.assigned_to_id)
             # verifica categorías
             data.categories = category_repo.list(
-                CollectionFilter(field_name="id", values=[c.id for c in data.categories])
+                CollectionFilter(field_name="id", values=[c.id for c in data.categories]),
             )
 
             return todoitem_repo.add(data)
-        except NotFoundError:
+        except NotFoundError as exc:
             raise NotFoundException(
-                detail=f"Usuario con id={data.assigned_to_id} no encontrado"
-            )
+                detail=f"Usuario con id={data.assigned_to_id} no encontrado",
+            ) from exc
 
     @patch(
         "/{item_id:int}",
@@ -107,23 +119,30 @@ class ItemController(Controller):
             if "categories" in data_dict:
                 data_dict["categories"] = category_repo.list(
                     CollectionFilter(
-                        field_name="id", values=[c.id for c in data_dict["categories"]]
-                    )
+                        field_name="id",
+                        values=[c.id for c in data_dict["categories"]],
+                    ),
                 )
 
             item, _ = todoitem_repo.get_and_update(
-                id=item_id, **data_dict, match_fields=["id"]
+                id=item_id,
+                **data_dict,
+                match_fields=["id"],
             )
             return item
-        except NotFoundError:
-            raise NotFoundException(detail=f"Item con id={item_id} no encontrado")
+        except NotFoundError as exc:
+            raise NotFoundException(
+                detail=f"Item con id={item_id} no encontrado",
+            ) from exc
 
     @delete("/{item_id:int}")
     async def delete_item(self, todoitem_repo: TodoItemRepository, item_id: int) -> None:
         try:
             todoitem_repo.delete(item_id)
-        except NotFoundError:
-            raise NotFoundException(detail=f"Item con id={item_id} no encontrado")
+        except NotFoundError as exc:
+            raise NotFoundException(
+                detail=f"Item con id={item_id} no encontrado",
+            ) from exc
 
 
 class UserController(Controller):
@@ -140,31 +159,42 @@ class UserController(Controller):
     async def get_user(self, user_repo: UserRepository, user_id: int) -> User:
         try:
             return user_repo.get(user_id)
-        except NotFoundError:
-            raise NotFoundException(detail=f"Usuario con id={user_id} no encontrado")
+        except NotFoundError as exc:
+            raise NotFoundException(
+                detail=f"Usuario con id={user_id} no encontrado",
+            ) from exc
 
     @post("/", dto=UserCreateDTO)
     async def create_user(self, user_repo: UserRepository, data: User) -> User:
-        return user_repo.add_hashed(data)
+        return user_repo.add_with_hashed_password(data)
 
     @patch("/{user_id:int}", dto=UserUpdateDTO)
     async def patch_user(
-        self, user_repo: UserRepository, user_id: int, data: DTOData[User]
+        self,
+        user_repo: UserRepository,
+        user_id: int,
+        data: DTOData[User],
     ) -> User:
         try:
             user, _ = user_repo.get_and_update(
-                id=user_id, **data.as_builtins(), match_fields=["id"]
+                id=user_id,
+                **data.as_builtins(),
+                match_fields=["id"],
             )
             return user
-        except NotFoundError:
-            raise NotFoundException(detail=f"Usuario con id={user_id} no encontrado")
+        except NotFoundError as exc:
+            raise NotFoundException(
+                detail=f"Usuario con id={user_id} no encontrado",
+            ) from exc
 
     @delete("/{user_id:int}")
     async def delete_user(self, user_repo: UserRepository, user_id: int) -> None:
         try:
             user_repo.delete(user_id)
-        except NotFoundError:
-            raise NotFoundException(detail=f"Usuario con id={user_id} no encontrado")
+        except NotFoundError as exc:
+            raise NotFoundException(
+                detail=f"Usuario con id={user_id} no encontrado",
+            ) from exc
 
 
 class CategoryController(Controller):
@@ -175,24 +205,29 @@ class CategoryController(Controller):
 
     @get("/")
     async def list_categories(
-        self, category_repo: CategoryRepository
+        self,
+        category_repo: CategoryRepository,
     ) -> Sequence[Category]:
         return category_repo.list()
 
     @get("/{category_id:int}", return_dto=CategoryFullDTO)
     async def get_category(
-        self, category_repo: CategoryRepository, category_id: int
+        self,
+        category_repo: CategoryRepository,
+        category_id: int,
     ) -> Category:
         try:
             return category_repo.get(category_id)
-        except NotFoundError:
+        except NotFoundError as exc:
             raise NotFoundException(
-                detail=f"Categoría con id={category_id} no encontrada"
-            )
+                detail=f"Categoría con id={category_id} no encontrada",
+            ) from exc
 
     @post("/", dto=CategoryCreateDTO)
     async def create_category(
-        self, category_repo: CategoryRepository, data: Category
+        self,
+        category_repo: CategoryRepository,
+        data: Category,
     ) -> Category:
         return category_repo.add(data)
 
@@ -205,24 +240,92 @@ class CategoryController(Controller):
     ) -> Category:
         try:
             category, _ = category_repo.get_and_update(
-                id=category_id, **data.as_builtins(), match_fields=["id"]
+                id=category_id,
+                **data.as_builtins(),
+                match_fields=["id"],
             )
             return category
-        except NotFoundError:
+        except NotFoundError as exc:
             raise NotFoundException(
-                detail=f"Categoría con id={category_id} no encontrada"
-            )
+                detail=f"Categoría con id={category_id} no encontrada",
+            ) from exc
 
     @delete("/{category_id:int}")
     async def delete_category(
-        self, category_repo: CategoryRepository, category_id: int
+        self,
+        category_repo: CategoryRepository,
+        category_id: int,
     ) -> None:
         try:
             category_repo.delete(category_id)
-        except NotFoundError:
+        except NotFoundError as exc:
             raise NotFoundException(
-                detail=f"Categoría con id={category_id} no encontrada"
+                detail=f"Categoría con id={category_id} no encontrada",
+            ) from exc
+
+
+class CommentController(Controller):
+    path = "/comments"
+    tags = ["comments"]
+    dependencies = {"comment_repo": Provide(provide_comment_repo)}
+    return_dto = CommentDTO
+
+    @get("/")
+    async def list_comments(self, comment_repo: CommentRepository) -> Sequence[Comment]:
+        return comment_repo.list()
+
+    @get("/{comment_id:int}")
+    async def get_comment(
+        self,
+        comment_repo: CommentRepository,
+        comment_id: int,
+    ) -> Comment:
+        try:
+            return comment_repo.get(comment_id)
+        except NotFoundError as exc:
+            raise NotFoundException(
+                detail=f"Comentario con id={comment_id} no encontrado",
+            ) from exc
+
+    @post("/", dto=CommentCreateDTO)
+    async def create_comment(
+        self,
+        comment_repo: CommentRepository,
+        data: Comment,
+    ) -> Comment:
+        return comment_repo.add(data)
+
+    @patch("/{comment_id:int}", dto=CommentUpdateDTO)
+    async def patch_comment(
+        self,
+        comment_repo: CommentRepository,
+        comment_id: int,
+        data: DTOData[Comment],
+    ) -> Comment:
+        try:
+            comment, _ = comment_repo.get_and_update(
+                id=comment_id,
+                **data.as_builtins(),
+                match_fields=["id"],
             )
+            return comment
+        except NotFoundError as exc:
+            raise NotFoundException(
+                detail=f"Comentario con id={comment_id} no encontrado",
+            ) from exc
+
+    @delete("/{comment_id:int}")
+    async def delete_comment(
+        self,
+        comment_repo: CommentRepository,
+        comment_id: int,
+    ) -> None:
+        try:
+            comment_repo.delete(comment_id)
+        except NotFoundError as exc:
+            raise NotFoundException(
+                detail=f"Comentario con id={comment_id} no encontrado",
+            ) from exc
 
 
 class AuthController(Controller):
@@ -243,12 +346,13 @@ class AuthController(Controller):
 
         if user is not None and password_hasher.verify(data.password, user.password):
             return oauth2_auth.login(
-                identifier=str(user.username), token_extras={"name": user.fullname}
+                identifier=str(user.username),
+                token_extras={"name": user.fullname},
             )
-        else:
-            raise HTTPException(
-                status_code=401, detail="Usuario o contraseña incorrecta"
-            )
+        raise HTTPException(
+            status_code=401,
+            detail="Usuario o contraseña incorrecta",
+        )
 
     @post("/logout")
     async def logout(self) -> Response[None]:
