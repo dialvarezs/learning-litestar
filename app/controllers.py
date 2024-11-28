@@ -1,9 +1,9 @@
-from typing import Annotated, Sequence
+from typing import Annotated, Any, Sequence
 
 from advanced_alchemy.exceptions import NotFoundError
 from advanced_alchemy.filters import CollectionFilter
-from litestar import Controller, Response, delete, get, patch, post
-from litestar.contrib.jwt import OAuth2Login
+from litestar import Controller, Request, Response, delete, get, patch, post
+from litestar.contrib.jwt import OAuth2Login, Token
 from litestar.di import Provide
 from litestar.dto import DTOData
 from litestar.enums import RequestEncodingType
@@ -154,6 +154,12 @@ class UserController(Controller):
     @get("/")
     async def list_users(self, user_repo: UserRepository) -> Sequence[User]:
         return user_repo.list()
+
+    @get("/me", return_dto=UserFullDTO)
+    async def get_current_user(
+        self, request: "Request[User, Token, Any]", user_repo: UserRepository
+    ) -> User:
+        return user_repo.get(request.user_id)
 
     @get("/{user_id:int}", return_dto=UserFullDTO)
     async def get_user(self, user_repo: UserRepository, user_id: int) -> User:
